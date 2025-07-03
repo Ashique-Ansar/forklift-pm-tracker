@@ -73,59 +73,6 @@
             display: none;
         }
         
-        .priority-alert-bar {
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 18px;
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-            animation: pulse-glow 2s infinite;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .priority-alert-bar:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
-        }
-        
-        .priority-alert-bar.hidden {
-            display: none;
-        }
-        
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3); }
-            50% { box-shadow: 0 4px 20px rgba(244, 67, 54, 0.6); }
-        }
-        
-        .priority-section {
-            margin-bottom: 32px;
-        }
-        
-        .priority-title {
-            color: #f44336;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .priority-title::before {
-            content: '🚨';
-            font-size: 24px;
-            animation: flash 1.5s infinite;
-        }
-        
-        .regular-section {
-            margin-top: 32px;
-        }
-        
         .overview-title {
             color: #2c3e50;
             text-align: center;
@@ -177,34 +124,6 @@
         @keyframes pulse-border {
             0%, 100% { border-color: #f44336; box-shadow: 0 8px 32px rgba(244, 67, 54, 0.3); }
             50% { border-color: #d32f2f; box-shadow: 0 12px 40px rgba(244, 67, 54, 0.5); }
-        }
-        
-        .alert-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 6px 10px;
-            border-radius: 20px;
-            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
-            animation: flash 1.5s infinite;
-            z-index: 10;
-        }
-        
-        .urgent-banner {
-            position: absolute;
-            top: 12px;
-            left: -30px;
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 4px 40px;
-            transform: rotate(-45deg);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
         .site-overview-card::before {
@@ -477,26 +396,6 @@
             font-size: 14px;
         }
         
-        .setup-needed {
-            background: linear-gradient(135deg, #FF9800, #F57C00);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 120px;
-            justify-content: center;
-        }
-        
-        .setup-needed::before {
-            content: '⚙️';
-            font-size: 14px;
-        }
-        
         .forklift-info {
             display: flex;
             flex-direction: column;
@@ -559,10 +458,40 @@
             0%, 50% { opacity: 1; }
             25%, 75% { opacity: 0.3; }
         }
+        
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+        
+        .sync-status.syncing {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .sync-status.error {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
     </style>
 </head>
 <body>
     <h1>Forklift PM Tracker</h1>
+    
+    <div class="sync-status" id="sync-status">🔄 Syncing with Excel...</div>
     
     <div class="sites-container">
         <div class="site-tile" onclick="toggleTile(this)">
@@ -612,87 +541,179 @@
     </div>
     
     <script>
-        // Microsoft Forms Configuration - UPDATED WITH YOUR FORM ID
+        // Excel Integration Configuration
+        const EXCEL_CONFIG = {
+            // Your Excel CSV link
+            csvUrl: 'https://rydertruck-my.sharepoint.com/:b:/g/personal/ashique_kanavaraansar_ryder_com/EXs54gPYllFIoWSIFfoSAEEBxDisaVOayFjNYn_EQiQzFw?e=bxItgz&download=1',
+            refreshInterval: 30000, // Refresh every 30 seconds
+            debug: true
+        };
+        
+        // Microsoft Forms Configuration
         const MICROSOFT_FORMS_ID = 'A8u7m8NNo0SmPgtJCYf0zIBvPNQMsBpCk89nqErQXnFUM0RMRVFDWEwwVURaRVkwSDlTTEY5RUtMSS4u';
         const FORMS_BASE_URL = 'https://forms.office.com/Pages/ResponsePage.aspx';
         
-        // Sample forklift data for each site - UPDATED DALLAS FORKLIFTS
-        const forkliftData = {
-            'Amarillo': [
-                { id: 'FL-AM-001', model: 'Toyota 8FBE15U', lastPMDate: '2025-06-20' }, // 7 days ago - Current
-                { id: 'FL-AM-002', model: 'Crown FC 5200', lastPMDate: '2025-05-15' }, // 43 days ago - Overdue
-                { id: 'FL-AM-003', model: 'Hyster J40XN', lastPMDate: '2025-06-25' }, // 2 days ago - Current
-                { id: 'FL-AM-004', model: 'Yale ERC050', lastPMDate: '2025-06-18' }, // 9 days ago - Current
-                { id: 'FL-AM-005', model: 'Caterpillar EP16', lastPMDate: '2025-05-10' }, // 48 days ago - Overdue
-                { id: 'FL-AM-006', model: 'Raymond 8510', lastPMDate: '2025-06-22' } // 5 days ago - Current
-            ],
-            'Dallas': [
-                { id: 'Forklift #1', model: 'Serial # 20071', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #2', model: 'Serial # 20030', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #3', model: 'Serial # 20169', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #4', model: 'Serial # 20025', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #5', model: 'Serial # 20041', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #6', model: 'Serial # 20066', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #7', model: 'Serial # 27692', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #8', model: 'Serial # 27679', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #9', model: 'Serial # 27640', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #10', model: 'Serial # 20134', lastPMDate: '2025-07-03' }, // Today - Current
-                { id: 'Forklift #11', model: 'Serial # 27678', lastPMDate: '2025-07-03' } // Today - Current
-            ],
-            'Fort Worth': [
-                { id: 'FL-FW-001', model: 'Toyota 8FBE25U', lastPMDate: '2025-05-18' }, // 40 days ago - Overdue
-                { id: 'FL-FW-002', model: 'Crown FC 5225', lastPMDate: '2025-06-23' }, // 4 days ago - Current
-                { id: 'FL-FW-003', model: 'Hyster J60XN', lastPMDate: '2025-06-25' }, // 2 days ago - Current
-                { id: 'FL-FW-004', model: 'Yale ERC070', lastPMDate: '2025-05-14' }, // 44 days ago - Overdue
-                { id: 'FL-FW-005', model: 'Caterpillar EP25', lastPMDate: '2025-06-20' }, // 7 days ago - Current
-                { id: 'FL-FW-006', model: 'Raymond 8710', lastPMDate: '2025-06-24' } // 3 days ago - Current
-            ],
-            'Houston': [
-                { id: 'FL-HU-001', model: 'Toyota 8FBE30U', lastPMDate: '2025-06-26' }, // 1 day ago - Current
-                { id: 'FL-HU-002', model: 'Crown FC 5230', lastPMDate: '2025-05-16' }, // 42 days ago - Overdue
-                { id: 'FL-HU-003', model: 'Hyster J70XN', lastPMDate: '2025-06-22' }, // 5 days ago - Current
-                { id: 'FL-HU-004', model: 'Yale ERC080', lastPMDate: '2025-06-25' }, // 2 days ago - Current
-                { id: 'FL-HU-005', model: 'Caterpillar EP30', lastPMDate: '2025-05-11' }, // 47 days ago - Overdue
-                { id: 'FL-HU-006', model: 'Raymond 8810', lastPMDate: '2025-06-23' } // 4 days ago - Current
-            ],
-            'San Antonio': [
-                { id: 'FL-SA-001', model: 'Toyota 8FBE35U', lastPMDate: '2025-05-13' }, // 45 days ago - Overdue
-                { id: 'FL-SA-002', model: 'Crown FC 5235', lastPMDate: '2025-06-21' }, // 6 days ago - Current
-                { id: 'FL-SA-003', model: 'Hyster J80XN', lastPMDate: '2025-06-24' }, // 3 days ago - Current
-                { id: 'FL-SA-004', model: 'Yale ERC090', lastPMDate: '2025-05-17' }, // 41 days ago - Overdue
-                { id: 'FL-SA-005', model: 'Caterpillar EP35', lastPMDate: '2025-06-25' }, // 2 days ago - Current
-                { id: 'FL-SA-006', model: 'Raymond 8910', lastPMDate: '2025-05-19' } // 39 days ago - Overdue
-            ],
-            'Lakewood': [
-                { id: 'FL-LW-001', model: 'Toyota 8FBE40U', lastPMDate: '2025-06-26' }, // 1 day ago - Current
-                { id: 'FL-LW-002', model: 'Crown FC 5240', lastPMDate: '2025-06-22' }, // 5 days ago - Current
-                { id: 'FL-LW-003', model: 'Hyster J90XN', lastPMDate: '2025-05-15' }, // 43 days ago - Overdue
-                { id: 'FL-LW-004', model: 'Yale ERC100', lastPMDate: '2025-06-23' }, // 4 days ago - Current
-                { id: 'FL-LW-005', model: 'Caterpillar EP40', lastPMDate: '2025-05-20' }, // 38 days ago - Overdue
-                { id: 'FL-LW-006', model: 'Raymond 9010', lastPMDate: '2025-06-25' } // 2 days ago - Current
-            ],
-            'Ontario': [
-                { id: 'FL-ON-001', model: 'Toyota 8FBE45U', lastPMDate: '2025-06-24' }, // 3 days ago - Current
-                { id: 'FL-ON-002', model: 'Crown FC 5245', lastPMDate: '2025-05-12' }, // 46 days ago - Overdue
-                { id: 'FL-ON-003', model: 'Hyster J100XN', lastPMDate: '2025-06-26' }, // 1 day ago - Current
-                { id: 'FL-ON-004', model: 'Yale ERC110', lastPMDate: '2025-06-21' }, // 6 days ago - Current
-                { id: 'FL-ON-005', model: 'Caterpillar EP45', lastPMDate: '2025-05-18' }, // 40 days ago - Overdue
-                { id: 'FL-ON-006', model: 'Raymond 9110', lastPMDate: '2025-06-25' } // 2 days ago - Current
-            ]
-        };
-
+        // Global forklift data storage
+        let forkliftData = {};
+        let lastSyncTime = null;
+        
+        // Function to get today's date in local timezone
+        function getTodaysDate() {
+            const today = new Date();
+            const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+            return localDate.toISOString().split('T')[0];
+        }
+        
+        // Function to parse CSV data
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split('\t');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split('\t');
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header.trim()] = values[index] ? values[index].trim() : '';
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return data;
+        }
+        
+        // Function to load data from Excel
+        async function loadDataFromExcel() {
+            updateSyncStatus('syncing', '🔄 Syncing with Excel...');
+            
+            try {
+                const response = await fetch(EXCEL_CONFIG.csvUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                
+                // Organize data by site
+                forkliftData = {};
+                data.forEach(row => {
+                    const site = row.Site;
+                    if (!forkliftData[site]) {
+                        forkliftData[site] = [];
+                    }
+                    
+                    forkliftData[site].push({
+                        id: row.ForkliftID,
+                        model: row.SerialNumber,
+                        lastPMDate: row.LastPMDate ? formatExcelDate(row.LastPMDate) : null
+                    });
+                });
+                
+                lastSyncTime = new Date();
+                updateSyncStatus('success', `✅ Synced ${data.length} records`);
+                
+                // Update displays
+                createSiteOverview();
+                const selectedTile = document.querySelector('.site-tile.selected');
+                if (selectedTile) {
+                    const siteName = selectedTile.querySelector('h3').textContent;
+                    showForklifts(siteName);
+                }
+                
+                if (EXCEL_CONFIG.debug) {
+                    console.log('Excel data loaded:', forkliftData);
+                }
+                
+            } catch (error) {
+                console.error('Error loading Excel data:', error);
+                updateSyncStatus('error', '❌ Sync failed');
+                
+                // Use fallback local data if Excel fails
+                initializeFallbackData();
+            }
+        }
+        
+        // Function to format Excel date
+        function formatExcelDate(excelDate) {
+            if (!excelDate) return null;
+            
+            // Handle different date formats
+            if (excelDate.includes('/')) {
+                // Format: M/D/YYYY
+                const parts = excelDate.split('/');
+                const month = parts[0].padStart(2, '0');
+                const day = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${year}-${month}-${day}`;
+            } else if (excelDate.includes('-')) {
+                // Already in YYYY-MM-DD format
+                return excelDate;
+            }
+            
+            return excelDate;
+        }
+        
+        // Function to update sync status
+        function updateSyncStatus(type, message) {
+            const syncStatus = document.getElementById('sync-status');
+            syncStatus.textContent = message;
+            syncStatus.className = 'sync-status';
+            
+            if (type === 'syncing') {
+                syncStatus.classList.add('syncing');
+            } else if (type === 'error') {
+                syncStatus.classList.add('error');
+            }
+            
+            // Hide status after 3 seconds for success
+            if (type === 'success') {
+                setTimeout(() => {
+                    syncStatus.style.opacity = '0.7';
+                }, 3000);
+            }
+        }
+        
+        // Fallback data initialization
+        function initializeFallbackData() {
+            forkliftData = {
+                'Amarillo': [
+                    { id: 'FL-AM-001', model: 'Toyota 8FBE15U', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-002', model: 'Crown FC 5200', lastPMDate: '2025-05-15' },
+                    { id: 'FL-AM-003', model: 'Hyster J40XN', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-004', model: 'Yale ERC050', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-005', model: 'Caterpillar EP16', lastPMDate: '2025-05-10' },
+                    { id: 'FL-AM-006', model: 'Raymond 8510', lastPMDate: '2025-07-03' }
+                ],
+                'Dallas': [
+                    { id: 'Forklift #1', model: 'Serial # 20071', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #2', model: 'Serial # 20030', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #3', model: 'Serial # 20169', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #4', model: 'Serial # 20025', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #5', model: 'Serial # 20041', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #6', model: 'Serial # 20066', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #7', model: 'Serial # 27692', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #8', model: 'Serial # 27679', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #9', model: 'Serial # 27640', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #10', model: 'Serial # 20134', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #11', model: 'Serial # 27678', lastPMDate: '2025-07-03' }
+                ]
+            };
+        }
+        
         // Function to calculate PM status based on last PM date
         function calculateAuditStatus(lastPMDate) {
             if (!lastPMDate) {
                 return { status: 'red', text: 'No PM', daysSince: null };
             }
             
-            // Create dates without timezone issues
             const today = new Date();
-            today.setHours(0, 0, 0, 0); // Set to midnight for accurate day comparison
+            today.setHours(0, 0, 0, 0);
             
             const pmDate = new Date(lastPMDate);
-            pmDate.setHours(0, 0, 0, 0); // Set to midnight for accurate day comparison
+            pmDate.setHours(0, 0, 0, 0);
             
             const daysDifference = Math.floor((today - pmDate) / (1000 * 60 * 60 * 24));
             
@@ -712,7 +733,7 @@
                 };
             }
         }
-
+        
         // Function to format date for display
         function formatDate(dateString) {
             if (!dateString) return 'Never';
@@ -723,781 +744,7 @@
                 day: 'numeric' 
             });
         }
-
-        // Function to get today's date in local timezone (more robust)
-        function getTodaysDate() {
-            const today = new Date();
-            // Get the date in YYYY-MM-DD format in local timezone
-            const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
-            return localDate.toISOString().split('T')[0];
-        }
-
-        // Function to update PM date when file is uploaded
-        function updateAuditDate(siteName, forkliftId, uploadDate = null) {
-            const dateToUse = uploadDate || getTodaysDate();
-            
-            // Find and update the forklift record
-            const siteData = forkliftData[siteName];
-            if (siteData) {
-                const forklift = siteData.find(f => f.id === forkliftId);
-                if (forklift) {
-                    forklift.lastPMDate = dateToUse;
-                    
-                    // Save to localStorage for persistence
-                    savePMDataToStorage();
-                    
-                    // If currently viewing this site, refresh the display
-                    const selectedTile = document.querySelector('.site-tile.selected');
-                    if (selectedTile && selectedTile.querySelector('h3').textContent === siteName) {
-                        showForklifts(siteName);
-                    }
-                    
-                    // Refresh overview cards
-                    createSiteOverview();
-                }
-            }
-        }
-
-        // SharePoint Configuration - SIMPLIFIED
-        const SHAREPOINT_CONFIG = {
-            siteUrl: window.location.origin,
-            listName: 'ForkliftPMTracker',
-            enabled: true,
-            debug: true // Enable detailed logging
-        };
-
-        // Debug function to log SharePoint operations
-        function debugLog(message, data = null) {
-            if (SHAREPOINT_CONFIG.debug) {
-                console.log(`[PM Tracker Debug] ${message}`, data || '');
-            }
-        }
-
-        // Simplified SharePoint detection
-        function isSharePointEnvironment() {
-            const isSharePoint = (
-                window.location.hostname.includes('sharepoint.com') ||
-                window.location.hostname.includes('.sharepoint.') ||
-                document.querySelector('#__REQUESTDIGEST') !== null ||
-                typeof _spPageContextInfo !== 'undefined'
-            );
-            debugLog(`SharePoint Environment: ${isSharePoint}`);
-            return isSharePoint;
-        }
-
-        // Test SharePoint connection
-        async function testSharePointConnection() {
-            if (!isSharePointEnvironment()) {
-                debugLog('Not in SharePoint environment');
-                return false;
-            }
-
-            try {
-                const testUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web`;
-                const response = await fetch(testUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose'
-                    }
-                });
-
-                if (response.ok) {
-                    debugLog('SharePoint connection successful');
-                    return true;
-                } else {
-                    debugLog('SharePoint connection failed', response.status);
-                    return false;
-                }
-            } catch (error) {
-                debugLog('SharePoint connection error', error.message);
-                return false;
-            }
-        }
-
-        // Simplified function to save PM data to SharePoint
-        async function savePMDataToSharePoint(siteName, forkliftId, pmDate) {
-            debugLog(`Attempting to save PM data: ${siteName} - ${forkliftId} - ${pmDate}`);
-            
-            if (!SHAREPOINT_CONFIG.enabled || !isSharePointEnvironment()) {
-                debugLog('SharePoint not available, using localStorage');
-                savePMDataToStorage();
-                return false;
-            }
-
-            try {
-                // First, test connection
-                const connectionOk = await testSharePointConnection();
-                if (!connectionOk) {
-                    throw new Error('SharePoint connection failed');
-                }
-
-                // Try to get the list first
-                const listCheckUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')`;
-                const listResponse = await fetch(listCheckUrl, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json;odata=verbose' }
-                });
-
-                if (!listResponse.ok) {
-                    debugLog('SharePoint list does not exist, creating it...');
-                    await createSharePointList();
-                }
-
-                // Now save the data
-                const listUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/items`;
-                const requestDigest = await getRequestDigest();
-                
-                if (!requestDigest) {
-                    throw new Error('Could not get request digest');
-                }
-
-                const itemData = {
-                    '__metadata': { 'type': 'SP.Data.ForkliftPMTrackerListItem' },
-                    'Title': `${siteName}-${forkliftId}`,
-                    'Site': siteName,
-                    'ForkliftID': forkliftId,
-                    'LastPMDate': pmDate
-                };
-
-                debugLog('Saving data to SharePoint', itemData);
-
-                const response = await fetch(listUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose',
-                        'Content-Type': 'application/json;odata=verbose',
-                        'X-RequestDigest': requestDigest
-                    },
-                    body: JSON.stringify(itemData)
-                });
-
-                if (response.ok) {
-                    debugLog('Successfully saved to SharePoint');
-                    savePMDataToStorage(); // Also save locally
-                    return true;
-                } else {
-                    const errorText = await response.text();
-                    debugLog('SharePoint save failed', errorText);
-                    throw new Error(`SharePoint save failed: ${response.status}`);
-                }
-
-            } catch (error) {
-                debugLog('Error saving to SharePoint', error.message);
-                savePMDataToStorage();
-                showNotification(`⚠️ Could not sync to SharePoint: ${error.message}`, 'error');
-                return false;
-            }
-        }
-
-        // Function to get SharePoint request digest
-        async function getRequestDigest() {
-            try {
-                const digestElement = document.getElementById('__REQUESTDIGEST');
-                if (digestElement && digestElement.value) {
-                    return digestElement.value;
-                }
-
-                // If no digest element, try to get it via API
-                const response = await fetch(`${SHAREPOINT_CONFIG.siteUrl}/_api/contextinfo`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    return data.d.GetContextWebInformation.FormDigestValue;
-                }
-
-                return null;
-            } catch (error) {
-                debugLog('Error getting request digest', error.message);
-                return null;
-            }
-        }
-
-        // Simplified function to create SharePoint list
-        async function createSharePointList() {
-            try {
-                const requestDigest = await getRequestDigest();
-                if (!requestDigest) {
-                    throw new Error('No request digest available');
-                }
-
-                const createUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists`;
-                const listData = {
-                    '__metadata': { 'type': 'SP.List' },
-                    'Title': SHAREPOINT_CONFIG.listName,
-                    'Description': 'Forklift PM Tracker Data',
-                    'BaseTemplate': 100
-                };
-
-                debugLog('Creating SharePoint list', listData);
-
-                const response = await fetch(createUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose',
-                        'Content-Type': 'application/json;odata=verbose',
-                        'X-RequestDigest': requestDigest
-                    },
-                    body: JSON.stringify(listData)
-                });
-
-                if (response.ok) {
-                    debugLog('SharePoint list created successfully');
-                    return true;
-                } else {
-                    const errorText = await response.text();
-                    debugLog('List creation failed', errorText);
-                    return false;
-                }
-
-            } catch (error) {
-                debugLog('Error creating SharePoint list', error.message);
-                return false;
-            }
-        }
-
-        // Simplified function to load PM data from SharePoint
-        async function loadPMDataFromSharePoint() {
-            debugLog('Loading PM data from SharePoint...');
-            
-            if (!SHAREPOINT_CONFIG.enabled || !isSharePointEnvironment()) {
-                debugLog('SharePoint not available, using localStorage');
-                loadPMDataFromStorage();
-                return;
-            }
-
-            try {
-                const listUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/items?$select=Site,ForkliftID,LastPMDate`;
-                
-                const response = await fetch(listUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose'
-                    }
-                });
-
-                if (!response.ok) {
-                    debugLog('SharePoint list not found, will create on first save');
-                    loadPMDataFromStorage();
-                    return;
-                }
-
-                const data = await response.json();
-                const items = data.d.results;
-                
-                debugLog(`Found ${items.length} items in SharePoint list`, items);
-
-                let dataChanged = false;
-
-                items.forEach(item => {
-                    const siteName = item.Site;
-                    const forkliftId = item.ForkliftID;
-                    const lastPMDate = item.LastPMDate ? item.LastPMDate.split('T')[0] : null;
-
-                    debugLog(`Processing: ${siteName} - ${forkliftId} - ${lastPMDate}`);
-
-                    if (forkliftData[siteName]) {
-                        const forklift = forkliftData[siteName].find(f => f.id === forkliftId);
-                        if (forklift && lastPMDate && forklift.lastPMDate !== lastPMDate) {
-                            debugLog(`Updating ${forkliftId} from ${forklift.lastPMDate} to ${lastPMDate}`);
-                            forklift.lastPMDate = lastPMDate;
-                            dataChanged = true;
-                        }
-                    }
-                });
-
-                if (dataChanged) {
-                    debugLog('Data changed, updating display');
-                    const selectedTile = document.querySelector('.site-tile.selected');
-                    if (selectedTile) {
-                        const siteName = selectedTile.querySelector('h3').textContent;
-                        showForklifts(siteName);
-                    }
-                    createSiteOverview();
-                    
-                    if (window.pmTrackerInitialized) {
-                        showNotification('🔄 PM data updated from SharePoint', 'success');
-                    }
-                } else {
-                    debugLog('No data changes detected');
-                }
-
-                loadPMDataFromStorage();
-
-            } catch (error) {
-                debugLog('Error loading from SharePoint', error.message);
-                loadPMDataFromStorage();
-            }
-        }
-
-        // Add debug panel
-        function addDebugPanel() {
-            if (!SHAREPOINT_CONFIG.debug) return;
-
-            const debugPanel = document.createElement('div');
-            debugPanel.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                background: rgba(0,0,0,0.8);
-                color: white;
-                padding: 16px;
-                border-radius: 8px;
-                font-family: monospace;
-                font-size: 12px;
-                max-width: 400px;
-                z-index: 1000;
-                max-height: 200px;
-                overflow-y: auto;
-            `;
-            debugPanel.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 8px;">SharePoint Debug Panel</div>
-                <div>Environment: ${isSharePointEnvironment() ? 'SharePoint' : 'Local'}</div>
-                <div>URL: ${window.location.href}</div>
-                <div>Request Digest: ${document.getElementById('__REQUESTDIGEST') ? 'Found' : 'Not Found'}</div>
-                <button onclick="testSharePointConnection().then(result => alert('Connection: ' + result))" 
-                        style="margin-top: 8px; padding: 4px 8px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Test Connection
-                </button>
-                <button onclick="loadPMDataFromSharePoint().then(() => alert('Refresh completed'))" 
-                        style="margin: 8px 0 0 8px; padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Force Refresh
-                </button>
-            `;
-            document.body.appendChild(debugPanel);
-        }
-
-        // Function to save PM data to localStorage (backup method)
-        function savePMDataToStorage() {
-            try {
-                const pmData = {};
-                Object.keys(forkliftData).forEach(siteName => {
-                    pmData[siteName] = forkliftData[siteName].map(forklift => ({
-                        id: forklift.id,
-                        lastPMDate: forklift.lastPMDate
-                    }));
-                });
-                localStorage.setItem('forkliftPMData', JSON.stringify(pmData));
-                console.log('PM data saved to localStorage');
-            } catch (error) {
-                console.error('Error saving PM data to localStorage:', error);
-            }
-        }
-
-        // Function to load PM data from localStorage (backup method)
-        function loadPMDataFromStorage() {
-            try {
-                const savedData = localStorage.getItem('forkliftPMData');
-                if (savedData) {
-                    const pmData = JSON.parse(savedData);
-                    Object.keys(pmData).forEach(siteName => {
-                        if (forkliftData[siteName]) {
-                            pmData[siteName].forEach(savedForklift => {
-                                const forklift = forkliftData[siteName].find(f => f.id === savedForklift.id);
-                                if (forklift && savedForklift.lastPMDate) {
-                                    forklift.lastPMDate = savedForklift.lastPMDate;
-                                }
-                            });
-                        }
-                    });
-                    console.log('PM data loaded from localStorage');
-                }
-            } catch (error) {
-                console.error('Error loading PM data from localStorage:', error);
-            }
-        }
-
-        // Function to save PM data to SharePoint List
-        async function savePMDataToSharePoint(siteName, forkliftId, pmDate) {
-            if (!SHAREPOINT_CONFIG.enabled) {
-                savePMDataToStorage(); // Fallback to localStorage
-                return;
-            }
-
-            // Check if we're in SharePoint environment
-            if (!isSharePointEnvironment()) {
-                console.log('Not in SharePoint environment, using localStorage');
-                savePMDataToStorage();
-                return;
-            }
-
-            try {
-                const listUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/items`;
-                
-                // First, check if record exists
-                const existingItem = await checkExistingPMRecord(siteName, forkliftId);
-                
-                const itemData = {
-                    '__metadata': { 'type': 'SP.Data.' + SHAREPOINT_CONFIG.listName + 'ListItem' },
-                    'Site': siteName,
-                    'ForkliftID': forkliftId,
-                    'LastPMDate': pmDate,
-                    'UpdatedDate': new Date().toISOString()
-                };
-
-                const requestDigest = document.getElementById('__REQUESTDIGEST')?.value || '';
-
-                if (existingItem) {
-                    // Update existing record
-                    await fetch(`${listUrl}(${existingItem.Id})`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json;odata=verbose',
-                            'Content-Type': 'application/json;odata=verbose',
-                            'X-RequestDigest': requestDigest,
-                            'X-HTTP-Method': 'MERGE',
-                            'If-Match': '*'
-                        },
-                        body: JSON.stringify(itemData)
-                    });
-                } else {
-                    // Create new record
-                    await fetch(listUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json;odata=verbose',
-                            'Content-Type': 'application/json;odata=verbose',
-                            'X-RequestDigest': requestDigest
-                        },
-                        body: JSON.stringify(itemData)
-                    });
-                }
-
-                console.log('PM data saved to SharePoint successfully');
-                
-                // Also save to localStorage as backup
-                savePMDataToStorage();
-                
-            } catch (error) {
-                console.error('Error saving to SharePoint, using localStorage fallback:', error);
-                savePMDataToStorage();
-                showNotification('⚠️ Using local storage - changes may not sync with other users', 'info');
-            }
-        }
-
-        // Function to check if PM record already exists
-        async function checkExistingPMRecord(siteName, forkliftId) {
-            try {
-                const listUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/items?$filter=Site eq '${siteName}' and ForkliftID eq '${forkliftId}'`;
-                
-                const response = await fetch(listUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose'
-                    }
-                });
-
-                const data = await response.json();
-                return data.d.results.length > 0 ? data.d.results[0] : null;
-                
-            } catch (error) {
-                console.error('Error checking existing record:', error);
-                return null;
-            }
-        }
-
-        // Function to load PM data from SharePoint List
-        async function loadPMDataFromSharePoint() {
-            if (!SHAREPOINT_CONFIG.enabled) {
-                loadPMDataFromStorage(); // Fallback to localStorage
-                return;
-            }
-
-            // Check if we're in SharePoint environment
-            if (!isSharePointEnvironment()) {
-                console.log('Not in SharePoint environment, using localStorage');
-                loadPMDataFromStorage();
-                return;
-            }
-
-            try {
-                const listUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/items?$select=Site,ForkliftID,LastPMDate`;
-                
-                const response = await fetch(listUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('SharePoint list not accessible');
-                }
-
-                const data = await response.json();
-                const items = data.d.results;
-
-                // Track if any data changed
-                let dataChanged = false;
-
-                // Update forkliftData with SharePoint data
-                items.forEach(item => {
-                    const siteName = item.Site;
-                    const forkliftId = item.ForkliftID;
-                    const lastPMDate = item.LastPMDate ? item.LastPMDate.split('T')[0] : null; // Extract date part only
-
-                    if (forkliftData[siteName]) {
-                        const forklift = forkliftData[siteName].find(f => f.id === forkliftId);
-                        if (forklift && lastPMDate && forklift.lastPMDate !== lastPMDate) {
-                            forklift.lastPMDate = lastPMDate;
-                            dataChanged = true;
-                        }
-                    }
-                });
-
-                if (dataChanged) {
-                    console.log('PM data updated from SharePoint');
-                    
-                    // Update the current view if data changed
-                    const selectedTile = document.querySelector('.site-tile.selected');
-                    if (selectedTile) {
-                        const siteName = selectedTile.querySelector('h3').textContent;
-                        showForklifts(siteName);
-                    }
-                    
-                    // Update overview cards
-                    createSiteOverview();
-                    
-                    // Show notification about updates
-                    if (window.pmTrackerInitialized) {
-                        showNotification('🔄 PM data updated by another user', 'info');
-                    }
-                } else {
-                    console.log('No PM data changes detected');
-                }
-                
-                // Also load from localStorage as backup
-                loadPMDataFromStorage();
-                
-            } catch (error) {
-                console.error('Error loading from SharePoint, using localStorage fallback:', error);
-                loadPMDataFromStorage();
-            }
-        }
-
-        // Function to create SharePoint list if it doesn't exist
-        async function createSharePointListIfNeeded() {
-            if (!SHAREPOINT_CONFIG.enabled || !isSharePointEnvironment()) {
-                return;
-            }
-
-            try {
-                // Check if list exists
-                const checkUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')`;
-                const checkResponse = await fetch(checkUrl, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json;odata=verbose' }
-                });
-
-                if (checkResponse.ok) {
-                    console.log('SharePoint list already exists');
-                    return;
-                }
-
-                // Create the list
-                const requestDigest = document.getElementById('__REQUESTDIGEST')?.value || '';
-                const createUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists`;
-                const listData = {
-                    '__metadata': { 'type': 'SP.List' },
-                    'Title': SHAREPOINT_CONFIG.listName,
-                    'Description': 'Forklift PM Tracker Data',
-                    'BaseTemplate': 100 // Generic List
-                };
-
-                await fetch(createUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json;odata=verbose',
-                        'Content-Type': 'application/json;odata=verbose',
-                        'X-RequestDigest': requestDigest
-                    },
-                    body: JSON.stringify(listData)
-                });
-
-                // Add custom columns
-                await addSharePointColumns();
-                
-                console.log('SharePoint list created successfully');
-                
-            } catch (error) {
-                console.error('Error creating SharePoint list:', error);
-            }
-        }
-
-        // Function to add custom columns to SharePoint list
-        async function addSharePointColumns() {
-            const columnsToAdd = [
-                { name: 'Site', type: 'SP.FieldText', displayName: 'Site' },
-                { name: 'ForkliftID', type: 'SP.FieldText', displayName: 'Forklift ID' },
-                { name: 'LastPMDate', type: 'SP.FieldDateTime', displayName: 'Last PM Date' },
-                { name: 'UpdatedDate', type: 'SP.FieldDateTime', displayName: 'Updated Date' }
-            ];
-
-            const requestDigest = document.getElementById('__REQUESTDIGEST')?.value || '';
-
-            for (const column of columnsToAdd) {
-                try {
-                    const fieldUrl = `${SHAREPOINT_CONFIG.siteUrl}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.listName}')/fields`;
-                    const fieldData = {
-                        '__metadata': { 'type': column.type },
-                        'Title': column.displayName,
-                        'FieldTypeKind': column.type === 'SP.FieldText' ? 2 : 4 // Text or DateTime
-                    };
-
-                    await fetch(fieldUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json;odata=verbose',
-                            'Content-Type': 'application/json;odata=verbose',
-                            'X-RequestDigest': requestDigest
-                        },
-                        body: JSON.stringify(fieldData)
-                    });
-                } catch (error) {
-                    console.log(`Column ${column.name} might already exist`);
-                }
-            }
-        }
-
-        // Function to handle form completion callback
-        function handleFormCompletion(siteName, forkliftId) {
-            const uploadDate = getTodaysDate();
-            updateAuditDate(siteName, forkliftId, uploadDate);
-            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate} and status updated!`, 'success');
-            
-            // Reset the button state
-            const buttons = document.querySelectorAll('.upload-btn, .form-opened');
-            buttons.forEach(button => {
-                if (button.onclick && button.onclick.toString().includes(forkliftId)) {
-                    button.className = 'upload-btn';
-                    button.textContent = 'Upload PM';
-                    button.onclick = () => openAuditForm(siteName, forkliftId);
-                }
-            });
-        }
-
-        // Function to simulate real Microsoft Forms integration
-        function setupFormCompletionListener(siteName, forkliftId, formWindow) {
-            // For demonstration purposes, let's create a more reliable method
-            // In a real implementation, you would use Microsoft Graph API or Power Automate
-            
-            let checkCount = 0;
-            const maxChecks = 120; // Check for 10 minutes (every 5 seconds)
-            
-            const checkFormCompletion = () => {
-                checkCount++;
-                
-                // Check if the form window is still open
-                if (formWindow.closed) {
-                    // User closed the form - ask if they completed it
-                    setTimeout(() => {
-                        const completed = confirm(
-                            `Did you successfully complete the PM form for ${forkliftId}?\n\n` +
-                            `✅ Click "OK" if you:\n` +
-                            `   • Filled out the form completely\n` +
-                            `   • Uploaded the PM file\n` +
-                            `   • Clicked "Submit" on the form\n\n` +
-                            `❌ Click "Cancel" if you didn't complete the upload`
-                        );
-                        
-                        if (completed) {
-                            handleFormCompletion(siteName, forkliftId);
-                        } else {
-                            // Reset button if form wasn't completed
-                            resetButtonState(siteName, forkliftId);
-                            showNotification(`❌ PM form not completed for ${forkliftId}`, 'error');
-                        }
-                    }, 500);
-                    return;
-                }
-                
-                // Continue checking if window is still open and we haven't exceeded max checks
-                if (checkCount < maxChecks) {
-                    setTimeout(checkFormCompletion, 5000); // Check every 5 seconds
-                } else {
-                    // Timeout - reset button
-                    resetButtonState(siteName, forkliftId);
-                    showNotification(`⏰ Form session timed out for ${forkliftId}. Please try again.`, 'info');
-                }
-            };
-            
-            // Start checking after 2 seconds
-            setTimeout(checkFormCompletion, 2000);
-        }
-
-        // Add a manual completion button for immediate testing
-        function addManualCompletionOption(siteName, forkliftId) {
-            // Create a temporary "Mark as Completed" button for testing
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: linear-gradient(135deg, #4CAF50, #388E3C);
-                color: white;
-                padding: 16px 24px;
-                border-radius: 12px;
-                z-index: 1001;
-                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-                cursor: pointer;
-                font-weight: 600;
-                animation: slideIn 0.3s ease;
-            `;
-            
-            notification.innerHTML = `
-                <div style="margin-bottom: 8px;">Testing Mode - ${forkliftId}</div>
-                <button onclick="testFormCompletion('${siteName}', '${forkliftId}')" 
-                        style="background: white; color: #4CAF50; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                    ✅ Mark PM as Completed
-                </button>
-                <button onclick="closeTestNotification()" 
-                        style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-left: 8px;">
-                    Cancel
-                </button>
-            `;
-            
-            notification.id = 'test-completion-notification';
-            document.body.appendChild(notification);
-            
-            // Auto-remove after 30 seconds
-            setTimeout(() => {
-                if (document.getElementById('test-completion-notification')) {
-                    closeTestNotification();
-                }
-            }, 30000);
-        }
-
-        // Global function for testing form completion
-        window.testFormCompletion = function(siteName, forkliftId) {
-            handleFormCompletion(siteName, forkliftId);
-            closeTestNotification();
-        };
-
-        // Global function to close test notification
-        window.closeTestNotification = function() {
-            const notification = document.getElementById('test-completion-notification');
-            if (notification) {
-                notification.remove();
-            }
-        };
-
-        // Function to reset button state
-        function resetButtonState(siteName, forkliftId) {
-            const buttons = document.querySelectorAll('.form-opened');
-            buttons.forEach(button => {
-                const buttonText = button.closest('.forklift-item')?.querySelector('.forklift-id')?.textContent;
-                if (buttonText === forkliftId) {
-                    button.className = 'upload-btn';
-                    button.textContent = 'Upload PM';
-                    button.onclick = () => openAuditForm(siteName, forkliftId);
-                }
-            });
-        }
-
+        
         function toggleTile(tile) {
             const siteName = tile.querySelector('h3').textContent;
             const forkliftSection = document.getElementById('forklift-section');
@@ -1515,7 +762,7 @@
                 overviewSection.classList.add('hidden');
             }
         }
-
+        
         function selectSiteFromOverview(siteName) {
             const forkliftSection = document.getElementById('forklift-section');
             const overviewSection = document.getElementById('overview-section');
@@ -1533,7 +780,7 @@
             forkliftSection.classList.add('active');
             overviewSection.classList.add('hidden');
         }
-
+        
         function createSiteOverview() {
             const overviewGrid = document.getElementById('site-overview-grid');
             overviewGrid.innerHTML = '';
@@ -1542,7 +789,6 @@
                 const forklifts = forkliftData[siteName];
                 const totalForklifts = forklifts.length;
                 
-                // Calculate current forklifts based on PM dates
                 const currentForklifts = forklifts.filter(f => {
                     const pmStatus = calculateAuditStatus(f.lastPMDate);
                     return pmStatus.status === 'green';
@@ -1555,22 +801,18 @@
                 const siteCard = document.createElement('div');
                 siteCard.className = 'site-overview-card';
                 
-                // Add enhanced styling for overdue sites
                 if (overduePercentage >= 50) {
                     siteCard.classList.add('critical-overdue');
                 } else if (overduePercentage >= 25) {
                     siteCard.classList.add('moderate-overdue');
                 }
                 
-                let alertBadge = '';
                 let overduePercentageText = '';
-                
                 if (overdueForklifts > 0 && overduePercentage >= 25) {
                     overduePercentageText = `<div class="overdue-percentage">${overduePercentage}% overdue</div>`;
                 }
                 
                 siteCard.innerHTML = `
-                    ${alertBadge}
                     <div class="site-overview-header">
                         <div class="site-name">${siteName}</div>
                         <div class="site-percentage">
@@ -1579,226 +821,4 @@
                         </div>
                     </div>
                     <div class="site-status-bar-container">
-                        <div class="site-status-bar" style="width: ${percentage}%;"></div>
-                    </div>
-                    <div class="site-stats">
-                        <span>${currentForklifts} Current</span>
-                        <span>${overdueForklifts} Overdue</span>
-                    </div>
-                `;
-                
-                siteCard.addEventListener('click', function() {
-                    selectSiteFromOverview(siteName);
-                });
-                
-                overviewGrid.appendChild(siteCard);
-            });
-        }
-
-        function showForklifts(siteName) {
-            const siteTitle = document.getElementById('site-title');
-            const forkliftGrid = document.getElementById('forklift-grid');
-            const statusPercentage = document.getElementById('status-percentage');
-            const statusBar = document.getElementById('status-bar');
-            const statusText = document.getElementById('status-text');
-            
-            siteTitle.textContent = `Forklifts at ${siteName}`;
-            forkliftGrid.innerHTML = '';
-            
-            const forklifts = forkliftData[siteName] || [];
-            const totalForklifts = forklifts.length;
-            
-            // Calculate current forklifts based on actual PM dates
-            const currentForklifts = forklifts.filter(f => {
-                const pmStatus = calculateAuditStatus(f.lastPMDate);
-                return pmStatus.status === 'green';
-            }).length;
-            
-            const percentage = totalForklifts > 0 ? Math.round((currentForklifts / totalForklifts) * 100) : 0;
-            
-            statusPercentage.textContent = `${percentage}% Current`;
-            statusBar.style.width = `${percentage}%`;
-            statusText.textContent = `${currentForklifts} of ${totalForklifts} forklifts are current`;
-            
-            forklifts.forEach((forklift, index) => {
-                const forkliftItem = document.createElement('div');
-                forkliftItem.className = 'forklift-item';
-                
-                // Calculate real-time PM status
-                const pmStatus = calculateAuditStatus(forklift.lastPMDate);
-                const statusClass = pmStatus.status === 'green' ? 'status-green' : 'status-red';
-                
-                // Create detailed status text with days information
-                let statusDisplayText = pmStatus.text;
-                let statusTooltip = '';
-                
-                if (pmStatus.status === 'green' && pmStatus.daysSince !== null) {
-                    statusTooltip = `Last PM: ${formatDate(forklift.lastPMDate)} (${pmStatus.daysSince} days ago). Due in ${pmStatus.daysUntilDue} days.`;
-                } else if (pmStatus.status === 'red' && pmStatus.daysSince !== null) {
-                    statusTooltip = `Last PM: ${formatDate(forklift.lastPMDate)} (${pmStatus.daysSince} days ago). Overdue by ${pmStatus.daysOverdue} days.`;
-                } else {
-                    statusTooltip = 'No PM record found.';
-                }
-                
-                const forkliftKey = `${siteName}-${forklift.id}`;
-                
-                forkliftItem.innerHTML = `
-                    <div class="forklift-left">
-                        <div class="forklift-info">
-                            <div class="forklift-id">${forklift.id}</div>
-                            <div class="forklift-model">${forklift.model}</div>
-                            <div class="last-pm-date" style="font-size: 12px; color: #888; margin-top: 4px;">
-                                Last PM: ${formatDate(forklift.lastPMDate)}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="forklift-right">
-                        <div class="audit-status ${statusClass}" title="${statusTooltip}">
-                            ${statusDisplayText}
-                            ${pmStatus.status === 'red' && pmStatus.daysOverdue ? 
-                                `<div class="overdue-days">${pmStatus.daysOverdue} days overdue</div>` : 
-                                ''
-                            }
-                        </div>
-                        <button class="upload-btn" onclick="openAuditForm('${siteName}', '${forklift.id}')">
-                            Upload PM
-                        </button>
-                    </div>
-                `;
-                
-                forkliftGrid.appendChild(forkliftItem);
-            });
-        }
-        
-        function openAuditForm(siteName, forkliftId) {
-            // Check if Microsoft Forms is configured
-            if (MICROSOFT_FORMS_ID === 'PASTE_YOUR_FORM_ID_HERE') {
-                showSetupNotification();
-                return;
-            }
-            
-            try {
-                // Build the Microsoft Forms URL with pre-filled data
-                const formsUrl = `${FORMS_BASE_URL}?id=${MICROSOFT_FORMS_ID}&prefill_site=${encodeURIComponent(siteName)}&prefill_forklift=${encodeURIComponent(forkliftId)}`;
-                
-                // Open Microsoft Forms in a new window
-                const formWindow = window.open(
-                    formsUrl, 
-                    '_blank', 
-                    'width=900,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no'
-                );
-                
-                if (formWindow) {
-                    // Update button to show form opened
-                    const button = event.target;
-                    button.className = 'form-opened';
-                    button.innerHTML = '📝 Form Open';
-                    button.onclick = null; // Disable further clicks
-                    
-                    // Show instructions
-                    showNotification(
-                        `📝 PM Form opened for ${siteName} - ${forkliftId}!\n\n` +
-                        `Instructions:\n` +
-                        `1. Complete all required fields\n` +
-                        `2. Upload your PM file\n` +
-                        `3. Click Submit on the form\n` +
-                        `4. Close the form window when done\n\n` +
-                        `✅ You'll be asked to confirm completion!\n` +
-                        `💾 Data will be saved permanently.`,
-                        'info'
-                    );
-                    
-                    // Set up form completion monitoring
-                    setupFormCompletionListener(siteName, forkliftId, formWindow);
-                    
-                } else {
-                    // Pop-up blocked
-                    showNotification(
-                        `🚫 Pop-up blocked!\n\n` +
-                        `Please allow pop-ups and try again.\n` +
-                        `You can also manually open: ${formsUrl}`,
-                        'error'
-                    );
-                }
-                
-            } catch (error) {
-                console.error('Error opening form:', error);
-                showNotification(`❌ Error opening audit form: ${error.message}`, 'error');
-            }
-        }
-        
-        function showSetupNotification() {
-            showNotification(
-                `⚙️ Microsoft Forms Setup Required\n\n` +
-                `To enable automatic PM uploads:\n` +
-                `1. Create a Microsoft Form\n` +
-                `2. Configure SharePoint storage\n` +
-                `3. Update the Form ID in the code\n\n` +
-                `Contact your admin for setup assistance.`,
-                'info'
-            );
-        }
-        
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 16px 24px;
-                border-radius: 8px;
-                color: white;
-                font-weight: 600;
-                z-index: 1000;
-                max-width: 400px;
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-                white-space: pre-line;
-                font-size: 14px;
-                line-height: 1.4;
-                ${type === 'success' ? 'background: linear-gradient(135deg, #4CAF50, #388E3C);' : 
-                  type === 'error' ? 'background: linear-gradient(135deg, #f44336, #d32f2f);' :
-                  'background: linear-gradient(135deg, #2196F3, #1976D2);'}
-            `;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (document.body.contains(notification)) {
-                        document.body.removeChild(notification);
-                    }
-                }, 300);
-            }, 6000);
-        }
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Load saved PM data from SharePoint (with localStorage fallback)
-            await loadPMDataFromSharePoint();
-            
-            // Create initial overview
-            createSiteOverview();
-            
-            // Start auto-refresh for real-time updates
-            startAutoRefresh();
-            
-            // Add manual refresh button
-            addRefreshButton();
-            
-            // Add debug panel for troubleshooting
-            addDebugPanel();
-            
-            // Show SharePoint integration status
-            showSharePointStatus();
-            
-            console.log('Forklift PM Tracker initialized with enhanced SharePoint debugging');
-        });
-    </script>
-</body>
-</html>
+                        <div class="site-status-bar" style="width: ${percentage}
