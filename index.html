@@ -488,7 +488,7 @@
         }
         
         .sheets-info {
-            background: linear-gradient(135deg, #4285f4, #34a853);
+            background: linear-gradient(135deg, #0078d4, #106ebe);
             color: white;
             padding: 16px;
             margin: 20px auto;
@@ -502,10 +502,10 @@
 <body>
     <h1>Forklift PM Tracker</h1>
     
-    <div class="sync-status" id="sync-status">📊 Loading Google Sheets data...</div>
+    <div class="sync-status" id="sync-status">📊 Loading Excel data...</div>
     
     <div class="sheets-info">
-        <p>📊 <strong>Real-Time Sync:</strong> This tracker automatically reads data from Google Sheets every 30 seconds. When you upload PM files via Microsoft Forms and update the sheet, everyone sees the changes instantly!</p>
+        <p>📊 <strong>Real-Time Sync:</strong> This tracker automatically reads data from SharePoint Excel every 30 seconds. When you upload PM files via Microsoft Forms and update the Excel file, everyone sees the changes instantly!</p>
     </div>
     
     <div class="sites-container">
@@ -555,10 +555,11 @@
         </div>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // Google Sheets Configuration
-        const SHEETS_CONFIG = {
-            csvUrl: 'https://docs.google.com/spreadsheets/d/1-5GqSGxGEpaM5dZQsjwFJrZgrSANcNPHwXmhoKlUDrE/export?format=csv&gid=0',
+        // SharePoint Excel Configuration
+        const EXCEL_CONFIG = {
+            excelUrl: 'https://rydertruck-my.sharepoint.com/:b:/g/personal/ashique_kanavaraansar_ryder_com/EXs54gPYllFIoWSIFfoSAEEBxDisaVOayFjNYn_EQiQzFw?e=bxItgz&download=1',
             refreshInterval: 30000, // Refresh every 30 seconds
             debug: true
         };
@@ -578,68 +579,62 @@
             return localDate.toISOString().split('T')[0];
         }
         
-        // Function to parse CSV data
-        function parseCSV(csv) {
-            const lines = csv.trim().split('\n');
-            if (lines.length < 2) return [];
-            
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            const data = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (line.trim() === '') continue;
-                
-                // Handle CSV parsing with potential commas in quoted fields
-                const values = [];
-                let current = '';
-                let inQuotes = false;
-                
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        values.push(current.trim().replace(/"/g, ''));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                values.push(current.trim().replace(/"/g, ''));
-                
-                if (values.length === headers.length) {
-                    const row = {};
-                    headers.forEach((header, index) => {
-                        row[header] = values[index] || '';
-                    });
-                    data.push(row);
-                }
-            }
-            
-            return data;
-        }
-        
-        // Function to load data from Google Sheets
-        async function loadDataFromSheets() {
-            updateSyncStatus('syncing', '🔄 Syncing with Google Sheets...');
+        // Function to load data from SharePoint Excel
+        async function loadDataFromExcel() {
+            updateSyncStatus('syncing', '🔄 Syncing with SharePoint Excel...');
             
             try {
-                const response = await fetch(SHEETS_CONFIG.csvUrl);
+                const response = await fetch(EXCEL_CONFIG.excelUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }
+                });
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const csvText = await response.text();
-                const data = parseCSV(csvText);
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 
-                if (data.length === 0) {
-                    throw new Error('No data found in Google Sheets');
+                // Get the first worksheet
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convert to JSON
+                const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (data.length < 2) {
+                    throw new Error('No data found in Excel file');
+                }
+                
+                // Parse headers and data
+                const headers = data[0].map(h => String(h || '').trim());
+                const parsedData = [];
+                
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        rowData[header] = String(row[index] || '').trim();
+                    });
+                    
+                    // Skip empty rows
+                    if (Object.values(rowData).some(value => value !== '')) {
+                        parsedData.push(rowData);
+                    }
+                }
+                
+                if (parsedData.length === 0) {
+                    throw new Error('No valid data rows found in Excel file');
                 }
                 
                 // Organize data by site
                 forkliftData = {};
-                data.forEach(row => {
+                parsedData.forEach(row => {
                     const site = row.Site;
                     if (!site) return;
                     
@@ -655,7 +650,7 @@
                 });
                 
                 lastSyncTime = new Date();
-                updateSyncStatus('success', `✅ Synced ${data.length} records from Google Sheets`);
+                updateSyncStatus('success', `✅ Synced ${parsedData.length} records from SharePoint Excel`);
                 
                 // Update displays
                 createSiteOverview();
@@ -665,16 +660,17 @@
                     showForklifts(siteName);
                 }
                 
-                if (SHEETS_CONFIG.debug) {
-                    console.log('Google Sheets data loaded:', forkliftData);
-                    console.log('Raw CSV data:', data);
+                if (EXCEL_CONFIG.debug) {
+                    console.log('SharePoint Excel data loaded:', forkliftData);
+                    console.log('Raw data:', parsedData);
+                    console.log('Headers found:', headers);
                 }
                 
             } catch (error) {
-                console.error('Error loading Google Sheets data:', error);
+                console.error('Error loading SharePoint Excel data:', error);
                 updateSyncStatus('error', '❌ Sync failed - using fallback data');
                 
-                // Use fallback local data if Sheets fails
+                // Use fallback local data if Excel fails
                 initializeFallbackData();
             }
         }
@@ -731,10 +727,10 @@
         // Auto-refresh every 30 seconds
         function startAutoRefresh() {
             setInterval(async () => {
-                await loadDataFromSheets();
-            }, SHEETS_CONFIG.refreshInterval);
+                await loadDataFromExcel();
+            }, EXCEL_CONFIG.refreshInterval);
             
-            console.log('Auto-refresh enabled: checking Google Sheets every 30 seconds');
+            console.log('Auto-refresh enabled: checking SharePoint Excel every 30 seconds');
         }
         
         // Function to update PM date when file is uploaded
@@ -847,7 +843,7 @@
         async function handleFormCompletion(siteName, forkliftId) {
             const uploadDate = getTodaysDate();
             await updateAuditDate(siteName, forkliftId, uploadDate);
-            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate}!\n\n📊 Remember to update Google Sheets for team sync.`, 'success');
+            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate}!\n\n📊 Remember to update SharePoint Excel for team sync.`, 'success');
             
             // Reset the button state
             const buttons = document.querySelectorAll('.upload-btn, .form-opened');
@@ -879,7 +875,7 @@
                             `   • Uploaded the PM file\n` +
                             `   • Clicked "Submit" on the form\n\n` +
                             `❌ Click "Cancel" if you didn't complete the upload\n\n` +
-                            `Note: Don't forget to update Google Sheets with today's date for team sync!`
+                            `Note: Don't forget to update SharePoint Excel with today's date for team sync!`
                         );
                         
                         if (completed) {
@@ -1114,9 +1110,9 @@
                         `1. Complete all required fields\n` +
                         `2. Upload your PM file\n` +
                         `3. Click Submit on the form\n` +
-                        `4. Update Google Sheets with today's date\n` +
+                        `4. Update SharePoint Excel with today's date\n` +
                         `5. Close the form window when done\n\n` +
-                        `📊 Team will see updates when you refresh Google Sheets!`,
+                        `📊 Team will see updates when you refresh SharePoint Excel!`,
                         'info'
                     );
                     
@@ -1192,8 +1188,8 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', async function() {
-            // Load data from Google Sheets
-            await loadDataFromSheets();
+            // Load data from SharePoint Excel
+            await loadDataFromExcel();
             
             // Start auto-refresh every 30 seconds
             startAutoRefresh();
@@ -1204,7 +1200,7 @@
             // Create initial overview
             createSiteOverview();
             
-            console.log('Forklift PM Tracker initialized with Google Sheets integration');
+            console.log('Forklift PM Tracker initialized with SharePoint Excel integration');
         });
     </script>
 </body>
