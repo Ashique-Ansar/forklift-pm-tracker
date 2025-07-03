@@ -505,7 +505,7 @@
     <div class="sync-status" id="sync-status">📊 Loading Excel data...</div>
     
     <div class="sheets-info">
-        <p>📊 <strong>Real-Time Sync:</strong> This tracker automatically reads data from SharePoint Excel every 30 seconds. When you upload PM files via Microsoft Forms and update the Excel file, everyone sees the changes instantly!</p>
+        <p>📊 <strong>Demo Mode:</strong> This tracker is currently using sample data due to SharePoint access restrictions. To enable real-time Excel sync, the file needs to be made publicly accessible or hosted differently. All functionality works - try clicking on sites and updating PM dates!</p>
     </div>
     
     <div class="sites-container">
@@ -559,9 +559,13 @@
     <script>
         // SharePoint Excel Configuration
         const EXCEL_CONFIG = {
+            // Note: Direct SharePoint links may not work due to CORS/authentication
+            // Try these alternative approaches:
             excelUrl: 'https://rydertruck-my.sharepoint.com/:b:/g/personal/ashique_kanavaraansar_ryder_com/EXs54gPYllFIoWSIFfoSAEEBxDisaVOayFjNYn_EQiQzFw?e=bxItgz&download=1',
             refreshInterval: 30000, // Refresh every 30 seconds
-            debug: true
+            debug: true,
+            // Enable fallback data immediately for testing
+            useFallbackData: true
         };
         
         // Microsoft Forms Configuration
@@ -583,16 +587,28 @@
         async function loadDataFromExcel() {
             updateSyncStatus('syncing', '🔄 Syncing with SharePoint Excel...');
             
+            // If fallback is enabled, use local data immediately
+            if (EXCEL_CONFIG.useFallbackData) {
+                console.log('Using fallback data due to SharePoint access restrictions');
+                updateSyncStatus('error', '⚠️ Using local data - SharePoint access restricted');
+                initializeFallbackData();
+                return;
+            }
+            
             try {
+                // Add headers to handle CORS and authentication
                 const response = await fetch(EXCEL_CONFIG.excelUrl, {
                     method: 'GET',
+                    mode: 'cors', // This might fail due to CORS policy
                     headers: {
-                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    }
+                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'Cache-Control': 'no-cache'
+                    },
+                    credentials: 'include' // Include cookies for authentication
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
                 }
                 
                 const arrayBuffer = await response.arrayBuffer();
@@ -668,14 +684,15 @@
                 
             } catch (error) {
                 console.error('Error loading SharePoint Excel data:', error);
-                updateSyncStatus('error', '❌ Sync failed - using fallback data');
+                console.error('This is likely due to CORS policy or authentication restrictions');
+                updateSyncStatus('error', '❌ SharePoint access failed - using local data');
                 
                 // Use fallback local data if Excel fails
                 initializeFallbackData();
             }
         }
         
-        // Fallback data initialization
+        // Fallback data initialization - Enhanced with more sites
         function initializeFallbackData() {
             forkliftData = {
                 'Amarillo': [
@@ -698,9 +715,51 @@
                     { id: 'Forklift #9', model: 'Serial # 27640', lastPMDate: '2025-07-03' },
                     { id: 'Forklift #10', model: 'Serial # 20134', lastPMDate: '2025-07-03' },
                     { id: 'Forklift #11', model: 'Serial # 27678', lastPMDate: '2025-07-03' }
+                ],
+                'Fort Worth': [
+                    { id: 'FL-FW-001', model: 'Toyota 8FGCU25', lastPMDate: '2025-06-20' },
+                    { id: 'FL-FW-002', model: 'Crown PE 4500', lastPMDate: '2025-04-15' },
+                    { id: 'FL-FW-003', model: 'Hyster H80FT', lastPMDate: '2025-07-01' },
+                    { id: 'FL-FW-004', model: 'Yale GLP060', lastPMDate: '2025-07-02' },
+                    { id: 'FL-FW-005', model: 'Caterpillar EP20', lastPMDate: '2025-05-05' }
+                ],
+                'Houston': [
+                    { id: 'FL-HOU-001', model: 'Toyota 8FBE20U', lastPMDate: '2025-06-25' },
+                    { id: 'FL-HOU-002', model: 'Crown RC 5500', lastPMDate: '2025-04-20' },
+                    { id: 'FL-HOU-003', model: 'Hyster J30XN', lastPMDate: '2025-07-01' },
+                    { id: 'FL-HOU-004', model: 'Yale ERC040', lastPMDate: '2025-06-30' },
+                    { id: 'FL-HOU-005', model: 'Caterpillar EP25', lastPMDate: '2025-05-08' },
+                    { id: 'FL-HOU-006', model: 'Raymond 7400', lastPMDate: '2025-07-02' },
+                    { id: 'FL-HOU-007', model: 'Toyota 8FGU32', lastPMDate: '2025-04-12' }
+                ],
+                'San Antonio': [
+                    { id: 'FL-SA-001', model: 'Toyota 8FGCU30', lastPMDate: '2025-06-18' },
+                    { id: 'FL-SA-002', model: 'Crown PE 4000', lastPMDate: '2025-05-22' },
+                    { id: 'FL-SA-003', model: 'Hyster H60FT', lastPMDate: '2025-07-01' },
+                    { id: 'FL-SA-004', model: 'Yale GLP050', lastPMDate: '2025-06-28' },
+                    { id: 'FL-SA-005', model: 'Caterpillar EP18', lastPMDate: '2025-04-25' },
+                    { id: 'FL-SA-006', model: 'Raymond 8410', lastPMDate: '2025-07-03' }
+                ],
+                'Lakewood': [
+                    { id: 'FL-LW-001', model: 'Toyota 8FBE18U', lastPMDate: '2025-06-15' },
+                    { id: 'FL-LW-002', model: 'Crown FC 5200', lastPMDate: '2025-05-10' },
+                    { id: 'FL-LW-003', model: 'Hyster J35XN', lastPMDate: '2025-07-02' },
+                    { id: 'FL-LW-004', model: 'Yale ERC055', lastPMDate: '2025-06-25' },
+                    { id: 'FL-LW-005', model: 'Caterpillar EP22', lastPMDate: '2025-04-18' }
+                ],
+                'Ontario': [
+                    { id: 'FL-ON-001', model: 'Toyota 8FGCU35', lastPMDate: '2025-06-12' },
+                    { id: 'FL-ON-002', model: 'Crown PE 4500', lastPMDate: '2025-05-28' },
+                    { id: 'FL-ON-003', model: 'Hyster H70FT', lastPMDate: '2025-07-01' },
+                    { id: 'FL-ON-004', model: 'Yale GLP080', lastPMDate: '2025-06-20' },
+                    { id: 'FL-ON-005', model: 'Caterpillar EP30', lastPMDate: '2025-04-30' },
+                    { id: 'FL-ON-006', model: 'Raymond 7500', lastPMDate: '2025-07-03' },
+                    { id: 'FL-ON-007', model: 'Toyota 8FGU25', lastPMDate: '2025-05-15' },
+                    { id: 'FL-ON-008', model: 'Crown RC 5000', lastPMDate: '2025-04-08' }
                 ]
             };
             
+            console.log('Fallback data initialized with all sites:', Object.keys(forkliftData));
             createSiteOverview();
         }
         
@@ -727,10 +786,15 @@
         // Auto-refresh every 30 seconds
         function startAutoRefresh() {
             setInterval(async () => {
-                await loadDataFromExcel();
+                // Skip auto-refresh if using fallback data to avoid console spam
+                if (!EXCEL_CONFIG.useFallbackData) {
+                    await loadDataFromExcel();
+                } else {
+                    console.log('Auto-refresh skipped - using demo data');
+                }
             }, EXCEL_CONFIG.refreshInterval);
             
-            console.log('Auto-refresh enabled: checking SharePoint Excel every 30 seconds');
+            console.log('Auto-refresh configured: checking SharePoint Excel every 30 seconds (disabled for demo mode)');
         }
         
         // Function to update PM date when file is uploaded
@@ -954,9 +1018,23 @@
         
         function createSiteOverview() {
             const overviewGrid = document.getElementById('site-overview-grid');
+            if (!overviewGrid) {
+                console.error('Overview grid element not found');
+                return;
+            }
+            
             overviewGrid.innerHTML = '';
             
-            Object.keys(forkliftData).forEach(siteName => {
+            const siteNames = Object.keys(forkliftData);
+            console.log('Creating overview for sites:', siteNames);
+            
+            if (siteNames.length === 0) {
+                console.warn('No forklift data available for overview');
+                overviewGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #666;">No site data available</div>';
+                return;
+            }
+            
+            siteNames.forEach(siteName => {
                 const forklifts = forkliftData[siteName];
                 const totalForklifts = forklifts.length;
                 
@@ -966,8 +1044,8 @@
                 }).length;
                 
                 const overdueForklifts = totalForklifts - currentForklifts;
-                const percentage = Math.round((currentForklifts / totalForklifts) * 100);
-                const overduePercentage = Math.round((overdueForklifts / totalForklifts) * 100);
+                const percentage = totalForklifts > 0 ? Math.round((currentForklifts / totalForklifts) * 100) : 0;
+                const overduePercentage = totalForklifts > 0 ? Math.round((overdueForklifts / totalForklifts) * 100) : 0;
                 
                 const siteCard = document.createElement('div');
                 siteCard.className = 'site-overview-card';
@@ -1005,6 +1083,7 @@
                 });
                 
                 overviewGrid.appendChild(siteCard);
+                console.log(`Added site card for ${siteName}: ${currentForklifts}/${totalForklifts} current (${percentage}%)`);
             });
         }
         
@@ -1188,19 +1267,28 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', async function() {
-            // Load data from SharePoint Excel
+            console.log('Initializing Forklift PM Tracker...');
+            
+            // Load data from SharePoint Excel (will fallback to demo data)
             await loadDataFromExcel();
             
-            // Start auto-refresh every 30 seconds
+            // Ensure fallback data is loaded if SharePoint fails
+            if (Object.keys(forkliftData).length === 0) {
+                console.log('No data loaded, initializing fallback data...');
+                initializeFallbackData();
+            }
+            
+            // Start auto-refresh every 30 seconds (will use fallback data)
             startAutoRefresh();
             
             // Load any saved PM data from localStorage
             loadPMDataFromStorage();
             
-            // Create initial overview
+            // Force create overview with current data
             createSiteOverview();
             
-            console.log('Forklift PM Tracker initialized with SharePoint Excel integration');
+            console.log('Forklift PM Tracker initialized. Sites loaded:', Object.keys(forkliftData));
+            console.log('Current forklift data:', forkliftData);
         });
     </script>
 </body>
