@@ -487,8 +487,8 @@
             50% { opacity: 0.7; }
         }
         
-        .excel-instructions {
-            background: linear-gradient(135deg, #FF9800, #F57C00);
+        .sheets-info {
+            background: linear-gradient(135deg, #4285f4, #34a853);
             color: white;
             padding: 16px;
             margin: 20px auto;
@@ -502,10 +502,10 @@
 <body>
     <h1>Forklift PM Tracker</h1>
     
-    <div class="sync-status" id="sync-status">📊 Loading Excel data...</div>
+    <div class="sync-status" id="sync-status">📊 Loading Google Sheets data...</div>
     
-    <div class="excel-instructions" id="excel-instructions" style="display: none;">
-        <p>📝 <strong>Excel Integration:</strong> This tracker reads data from your Excel sheet. To update PM dates, modify the Excel file directly or use the Upload PM buttons to update via Microsoft Forms.</p>
+    <div class="sheets-info">
+        <p>📊 <strong>Real-Time Sync:</strong> This tracker automatically reads data from Google Sheets every 30 seconds. When you upload PM files via Microsoft Forms and update the sheet, everyone sees the changes instantly!</p>
     </div>
     
     <div class="sites-container">
@@ -556,75 +556,19 @@
     </div>
     
     <script>
+        // Google Sheets Configuration
+        const SHEETS_CONFIG = {
+            csvUrl: 'https://docs.google.com/spreadsheets/d/1-5GqSGxGEpaM5dZQsjwFJrZgrSANcNPHwXmhoKlUDrE/export?format=csv&gid=0',
+            refreshInterval: 30000, // Refresh every 30 seconds
+            debug: true
+        };
+        
         // Microsoft Forms Configuration
         const MICROSOFT_FORMS_ID = 'A8u7m8NNo0SmPgtJCYf0zIBvPNQMsBpCk89nqErQXnFUM0RMRVFDWEwwVURaRVkwSDlTTEY5RUtMSS4u';
         const FORMS_BASE_URL = 'https://forms.office.com/Pages/ResponsePage.aspx';
         
-        // Global forklift data storage - loaded from Excel data you provided
-        let forkliftData = {
-            'Amarillo': [
-                { id: 'FL-AM-001', model: 'Toyota 8FBE15U', lastPMDate: '2025-07-03' },
-                { id: 'FL-AM-002', model: 'Crown FC 5200', lastPMDate: '2025-05-15' },
-                { id: 'FL-AM-003', model: 'Hyster J40XN', lastPMDate: '2025-07-03' },
-                { id: 'FL-AM-004', model: 'Yale ERC050', lastPMDate: '2025-07-03' },
-                { id: 'FL-AM-005', model: 'Caterpillar EP16', lastPMDate: '2025-05-10' },
-                { id: 'FL-AM-006', model: 'Raymond 8510', lastPMDate: '2025-07-03' }
-            ],
-            'Dallas': [
-                { id: 'Forklift #1', model: 'Serial # 20071', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #2', model: 'Serial # 20030', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #3', model: 'Serial # 20169', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #4', model: 'Serial # 20025', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #5', model: 'Serial # 20041', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #6', model: 'Serial # 20066', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #7', model: 'Serial # 27692', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #8', model: 'Serial # 27679', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #9', model: 'Serial # 27640', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #10', model: 'Serial # 20134', lastPMDate: '2025-07-03' },
-                { id: 'Forklift #11', model: 'Serial # 27678', lastPMDate: '2025-07-03' }
-            ],
-            'Fort Worth': [
-                { id: 'FL-FW-001', model: 'Toyota 8FBE25U', lastPMDate: '2025-05-18' },
-                { id: 'FL-FW-002', model: 'Crown FC 5225', lastPMDate: '2025-07-03' },
-                { id: 'FL-FW-003', model: 'Hyster J60XN', lastPMDate: '2025-07-03' },
-                { id: 'FL-FW-004', model: 'Yale ERC070', lastPMDate: '2025-05-14' },
-                { id: 'FL-FW-005', model: 'Caterpillar EP25', lastPMDate: '2025-07-03' },
-                { id: 'FL-FW-006', model: 'Raymond 8710', lastPMDate: '2025-07-03' }
-            ],
-            'Houston': [
-                { id: 'FL-HU-001', model: 'Toyota 8FBE30U', lastPMDate: '2025-07-03' },
-                { id: 'FL-HU-002', model: 'Crown FC 5230', lastPMDate: '2025-05-16' },
-                { id: 'FL-HU-003', model: 'Hyster J70XN', lastPMDate: '2025-07-03' },
-                { id: 'FL-HU-004', model: 'Yale ERC080', lastPMDate: '2025-07-03' },
-                { id: 'FL-HU-005', model: 'Caterpillar EP30', lastPMDate: '2025-05-11' },
-                { id: 'FL-HU-006', model: 'Raymond 8810', lastPMDate: '2025-07-03' }
-            ],
-            'San Antonio': [
-                { id: 'FL-SA-001', model: 'Toyota 8FBE35U', lastPMDate: '2025-05-13' },
-                { id: 'FL-SA-002', model: 'Crown FC 5235', lastPMDate: '2025-07-03' },
-                { id: 'FL-SA-003', model: 'Hyster J80XN', lastPMDate: '2025-07-03' },
-                { id: 'FL-SA-004', model: 'Yale ERC090', lastPMDate: '2025-05-17' },
-                { id: 'FL-SA-005', model: 'Caterpillar EP35', lastPMDate: '2025-07-03' },
-                { id: 'FL-SA-006', model: 'Raymond 8910', lastPMDate: '2025-05-19' }
-            ],
-            'Lakewood': [
-                { id: 'FL-LW-001', model: 'Toyota 8FBE40U', lastPMDate: '2025-07-03' },
-                { id: 'FL-LW-002', model: 'Crown FC 5240', lastPMDate: '2025-07-03' },
-                { id: 'FL-LW-003', model: 'Hyster J90XN', lastPMDate: '2025-05-15' },
-                { id: 'FL-LW-004', model: 'Yale ERC100', lastPMDate: '2025-07-03' },
-                { id: 'FL-LW-005', model: 'Caterpillar EP40', lastPMDate: '2025-05-20' },
-                { id: 'FL-LW-006', model: 'Raymond 9010', lastPMDate: '2025-07-03' }
-            ],
-            'Ontario': [
-                { id: 'FL-ON-001', model: 'Toyota 8FBE45U', lastPMDate: '2025-07-03' },
-                { id: 'FL-ON-002', model: 'Crown FC 5245', lastPMDate: '2025-05-12' },
-                { id: 'FL-ON-003', model: 'Hyster J100XN', lastPMDate: '2025-07-03' },
-                { id: 'FL-ON-004', model: 'Yale ERC110', lastPMDate: '2025-07-03' },
-                { id: 'FL-ON-005', model: 'Caterpillar EP45', lastPMDate: '2025-05-18' },
-                { id: 'FL-ON-006', model: 'Raymond 9110', lastPMDate: '2025-07-03' }
-            ]
-        };
-        
+        // Global forklift data storage
+        let forkliftData = {};
         let lastSyncTime = null;
         
         // Function to get today's date in local timezone
@@ -632,6 +576,165 @@
             const today = new Date();
             const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
             return localDate.toISOString().split('T')[0];
+        }
+        
+        // Function to parse CSV data
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.trim() === '') continue;
+                
+                // Handle CSV parsing with potential commas in quoted fields
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/"/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/"/g, ''));
+                
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index] || '';
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return data;
+        }
+        
+        // Function to load data from Google Sheets
+        async function loadDataFromSheets() {
+            updateSyncStatus('syncing', '🔄 Syncing with Google Sheets...');
+            
+            try {
+                const response = await fetch(SHEETS_CONFIG.csvUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                
+                if (data.length === 0) {
+                    throw new Error('No data found in Google Sheets');
+                }
+                
+                // Organize data by site
+                forkliftData = {};
+                data.forEach(row => {
+                    const site = row.Site;
+                    if (!site) return;
+                    
+                    if (!forkliftData[site]) {
+                        forkliftData[site] = [];
+                    }
+                    
+                    forkliftData[site].push({
+                        id: row.ForkliftID || 'Unknown',
+                        model: row.SerialNumber || 'Unknown',
+                        lastPMDate: row.LastPMDate || null
+                    });
+                });
+                
+                lastSyncTime = new Date();
+                updateSyncStatus('success', `✅ Synced ${data.length} records from Google Sheets`);
+                
+                // Update displays
+                createSiteOverview();
+                const selectedTile = document.querySelector('.site-tile.selected');
+                if (selectedTile) {
+                    const siteName = selectedTile.querySelector('h3').textContent;
+                    showForklifts(siteName);
+                }
+                
+                if (SHEETS_CONFIG.debug) {
+                    console.log('Google Sheets data loaded:', forkliftData);
+                    console.log('Raw CSV data:', data);
+                }
+                
+            } catch (error) {
+                console.error('Error loading Google Sheets data:', error);
+                updateSyncStatus('error', '❌ Sync failed - using fallback data');
+                
+                // Use fallback local data if Sheets fails
+                initializeFallbackData();
+            }
+        }
+        
+        // Fallback data initialization
+        function initializeFallbackData() {
+            forkliftData = {
+                'Amarillo': [
+                    { id: 'FL-AM-001', model: 'Toyota 8FBE15U', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-002', model: 'Crown FC 5200', lastPMDate: '2025-05-15' },
+                    { id: 'FL-AM-003', model: 'Hyster J40XN', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-004', model: 'Yale ERC050', lastPMDate: '2025-07-03' },
+                    { id: 'FL-AM-005', model: 'Caterpillar EP16', lastPMDate: '2025-05-10' },
+                    { id: 'FL-AM-006', model: 'Raymond 8510', lastPMDate: '2025-07-03' }
+                ],
+                'Dallas': [
+                    { id: 'Forklift #1', model: 'Serial # 20071', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #2', model: 'Serial # 20030', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #3', model: 'Serial # 20169', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #4', model: 'Serial # 20025', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #5', model: 'Serial # 20041', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #6', model: 'Serial # 20066', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #7', model: 'Serial # 27692', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #8', model: 'Serial # 27679', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #9', model: 'Serial # 27640', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #10', model: 'Serial # 20134', lastPMDate: '2025-07-03' },
+                    { id: 'Forklift #11', model: 'Serial # 27678', lastPMDate: '2025-07-03' }
+                ]
+            };
+            
+            createSiteOverview();
+        }
+        
+        // Function to update sync status
+        function updateSyncStatus(type, message) {
+            const syncStatus = document.getElementById('sync-status');
+            syncStatus.textContent = message;
+            syncStatus.className = 'sync-status';
+            
+            if (type === 'syncing') {
+                syncStatus.classList.add('syncing');
+            } else if (type === 'error') {
+                syncStatus.classList.add('error');
+            }
+            
+            // Hide status after 3 seconds for success
+            if (type === 'success') {
+                setTimeout(() => {
+                    syncStatus.style.opacity = '0.7';
+                }, 3000);
+            }
+        }
+        
+        // Auto-refresh every 30 seconds
+        function startAutoRefresh() {
+            setInterval(async () => {
+                await loadDataFromSheets();
+            }, SHEETS_CONFIG.refreshInterval);
+            
+            console.log('Auto-refresh enabled: checking Google Sheets every 30 seconds');
         }
         
         // Function to update PM date when file is uploaded
@@ -698,26 +801,6 @@
             }
         }
         
-        // Function to update sync status
-        function updateSyncStatus(type, message) {
-            const syncStatus = document.getElementById('sync-status');
-            syncStatus.textContent = message;
-            syncStatus.className = 'sync-status';
-            
-            if (type === 'syncing') {
-                syncStatus.classList.add('syncing');
-            } else if (type === 'error') {
-                syncStatus.classList.add('error');
-            }
-            
-            // Hide status after 3 seconds for success
-            if (type === 'success') {
-                setTimeout(() => {
-                    syncStatus.style.opacity = '0.7';
-                }, 3000);
-            }
-        }
-        
         // Function to calculate PM status based on last PM date
         function calculateAuditStatus(lastPMDate) {
             if (!lastPMDate) {
@@ -764,7 +847,7 @@
         async function handleFormCompletion(siteName, forkliftId) {
             const uploadDate = getTodaysDate();
             await updateAuditDate(siteName, forkliftId, uploadDate);
-            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate} and status updated!`, 'success');
+            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate}!\n\n📊 Remember to update Google Sheets for team sync.`, 'success');
             
             // Reset the button state
             const buttons = document.querySelectorAll('.upload-btn, .form-opened');
@@ -796,7 +879,7 @@
                             `   • Uploaded the PM file\n` +
                             `   • Clicked "Submit" on the form\n\n` +
                             `❌ Click "Cancel" if you didn't complete the upload\n\n` +
-                            `Note: This will update the date for all team members.`
+                            `Note: Don't forget to update Google Sheets with today's date for team sync!`
                         );
                         
                         if (completed) {
@@ -1031,9 +1114,9 @@
                         `1. Complete all required fields\n` +
                         `2. Upload your PM file\n` +
                         `3. Click Submit on the form\n` +
-                        `4. Close the form window when done\n\n` +
-                        `✅ You'll be asked to confirm completion!\n` +
-                        `💾 Data will be saved permanently.`,
+                        `4. Update Google Sheets with today's date\n` +
+                        `5. Close the form window when done\n\n` +
+                        `📊 Team will see updates when you refresh Google Sheets!`,
                         'info'
                     );
                     
@@ -1108,8 +1191,12 @@
         }
         
         // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            updateSyncStatus('success', '📊 Data loaded from Excel');
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load data from Google Sheets
+            await loadDataFromSheets();
+            
+            // Start auto-refresh every 30 seconds
+            startAutoRefresh();
             
             // Load any saved PM data from localStorage
             loadPMDataFromStorage();
@@ -1117,12 +1204,7 @@
             // Create initial overview
             createSiteOverview();
             
-            // Show Excel instructions
-            setTimeout(() => {
-                document.getElementById('excel-instructions').style.display = 'block';
-            }, 2000);
-            
-            console.log('Forklift PM Tracker initialized with Excel data');
+            console.log('Forklift PM Tracker initialized with Google Sheets integration');
         });
     </script>
 </body>
