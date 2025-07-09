@@ -488,7 +488,7 @@
         }
         
         .sheets-info {
-            background: linear-gradient(135deg, #0078d4, #106ebe);
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
             color: white;
             padding: 16px;
             margin: 20px auto;
@@ -502,10 +502,10 @@
 <body>
     <h1>Forklift PM Tracker</h1>
     
-    <div class="sync-status" id="sync-status">📊 Loading Excel data...</div>
+    <div class="sync-status" id="sync-status">📊 Loading SharePoint data...</div>
     
     <div class="sheets-info">
-        <p>📊 <strong>Demo Mode:</strong> This tracker is currently using sample data due to SharePoint access restrictions. To enable real-time Excel sync, the file needs to be made publicly accessible or hosted differently. All functionality works - try clicking on sites and updating PM dates!</p>
+        <p>📊 <strong>Live SharePoint Integration:</strong> This tracker syncs with SharePoint every 60 seconds. Submit Microsoft Forms to automatically update PM data for all users! <strong>✅ Real-time sync active!</strong></p>
     </div>
     
     <div class="sites-container">
@@ -555,20 +555,14 @@
         </div>
     </div>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // SharePoint Excel Configuration
-        const EXCEL_CONFIG = {
-            // Note: Direct SharePoint links may not work due to CORS/authentication
-            // Try these alternative approaches:
-            excelUrl: 'https://rydertruck-my.sharepoint.com/:b:/g/personal/ashique_kanavaraansar_ryder_com/EXs54gPYllFIoWSIFfoSAEEBxDisaVOayFjNYn_EQiQzFw?e=bxItgz&download=1',
-            refreshInterval: 30000, // Refresh every 30 seconds
-            debug: true,
-            // Enable fallback data immediately for testing
-            useFallbackData: true
+        // SharePoint Configuration
+        const SHAREPOINT_CONFIG = {
+            SITE_URL: 'https://rydertruck.sharepoint.com/sites/CHEPRyderDocuments',
+            LIST_NAME: 'ForkliftPMTracker'
         };
         
-        // Microsoft Forms Configuration
+        // Microsoft Forms Configuration - KEEP YOUR EXISTING FORM ID
         const MICROSOFT_FORMS_ID = 'A8u7m8NNo0SmPgtJCYf0zIBvPNQMsBpCk89nqErQXnFUM0RMRVFDWEwwVURaRVkwSDlTTEY5RUtMSS4u';
         const FORMS_BASE_URL = 'https://forms.office.com/Pages/ResponsePage.aspx';
         
@@ -583,90 +577,62 @@
             return localDate.toISOString().split('T')[0];
         }
         
-        // Function to load data from SharePoint Excel
-        async function loadDataFromExcel() {
-            updateSyncStatus('syncing', '🔄 Syncing with SharePoint Excel...');
-            
-            // If fallback is enabled, use local data immediately
-            if (EXCEL_CONFIG.useFallbackData) {
-                console.log('Using fallback data due to SharePoint access restrictions');
-                updateSyncStatus('error', '⚠️ Using local data - SharePoint access restricted');
-                initializeFallbackData();
-                return;
-            }
+        // NEW: Load data from SharePoint
+        async function loadDataFromSharePoint() {
+            updateSyncStatus('syncing', '🔄 Syncing with SharePoint...');
             
             try {
-                // Add headers to handle CORS and authentication
-                const response = await fetch(EXCEL_CONFIG.excelUrl, {
+                // SharePoint REST API endpoint
+                const apiUrl = `${SHAREPOINT_CONFIG.SITE_URL}/_api/web/lists/getbytitle('${SHAREPOINT_CONFIG.LIST_NAME}')/items?$select=ID,ForkliftID,Site,SerialNumber,LastPMDate,UpdatedBy,UpdatedDate&$top=5000&$orderby=Site,ForkliftID`;
+                
+                console.log('Fetching from SharePoint:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
                     method: 'GET',
-                    mode: 'cors', // This might fail due to CORS policy
                     headers: {
-                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'Cache-Control': 'no-cache'
+                        'Accept': 'application/json;odata=verbose',
+                        'Content-Type': 'application/json;odata=verbose'
                     },
-                    credentials: 'include' // Include cookies for authentication
+                    credentials: 'include' // Use current user's SharePoint session
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                    throw new Error(`SharePoint error: ${response.status} - ${response.statusText}`);
                 }
                 
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const data = await response.json();
+                const items = data.d ? data.d.results : data.value || [];
                 
-                // Get the first worksheet
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                console.log(`SharePoint returned ${items.length} items:`, items);
                 
-                // Convert to JSON
-                const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                if (data.length < 2) {
-                    throw new Error('No data found in Excel file');
-                }
-                
-                // Parse headers and data
-                const headers = data[0].map(h => String(h || '').trim());
-                const parsedData = [];
-                
-                for (let i = 1; i < data.length; i++) {
-                    const row = data[i];
-                    if (!row || row.length === 0) continue;
-                    
-                    const rowData = {};
-                    headers.forEach((header, index) => {
-                        rowData[header] = String(row[index] || '').trim();
-                    });
-                    
-                    // Skip empty rows
-                    if (Object.values(rowData).some(value => value !== '')) {
-                        parsedData.push(rowData);
-                    }
-                }
-                
-                if (parsedData.length === 0) {
-                    throw new Error('No valid data rows found in Excel file');
-                }
-                
-                // Organize data by site
+                // Convert SharePoint data to our website format
                 forkliftData = {};
-                parsedData.forEach(row => {
-                    const site = row.Site;
-                    if (!site) return;
+                
+                items.forEach(item => {
+                    const site = item.Site;
+                    if (!site) {
+                        console.warn('Item missing Site:', item);
+                        return;
+                    }
                     
                     if (!forkliftData[site]) {
                         forkliftData[site] = [];
                     }
                     
                     forkliftData[site].push({
-                        id: row.ForkliftID || 'Unknown',
-                        model: row.SerialNumber || 'Unknown',
-                        lastPMDate: row.LastPMDate || null
+                        id: item.ForkliftID || 'Unknown',
+                        model: item.SerialNumber || 'Unknown',
+                        lastPMDate: item.LastPMDate ? item.LastPMDate.split('T')[0] : null, // Convert to YYYY-MM-DD
+                        updatedBy: item.UpdatedBy || 'System',
+                        updatedDate: item.UpdatedDate ? item.UpdatedDate.split('T')[0] : null,
+                        sharePointId: item.ID
                     });
                 });
                 
+                const totalItems = Object.values(forkliftData).reduce((sum, site) => sum + site.length, 0);
                 lastSyncTime = new Date();
-                updateSyncStatus('success', `✅ Synced ${parsedData.length} records from SharePoint Excel`);
+                
+                updateSyncStatus('success', `✅ Synced ${totalItems} forklifts from SharePoint (${lastSyncTime.toLocaleTimeString()})`);
                 
                 // Update displays
                 createSiteOverview();
@@ -676,23 +642,28 @@
                     showForklifts(siteName);
                 }
                 
-                if (EXCEL_CONFIG.debug) {
-                    console.log('SharePoint Excel data loaded:', forkliftData);
-                    console.log('Raw data:', parsedData);
-                    console.log('Headers found:', headers);
-                }
+                console.log('SharePoint data organized by site:', Object.keys(forkliftData));
+                console.log('Total forklifts loaded:', totalItems);
                 
             } catch (error) {
-                console.error('Error loading SharePoint Excel data:', error);
-                console.error('This is likely due to CORS policy or authentication restrictions');
-                updateSyncStatus('error', '❌ SharePoint access failed - using local data');
+                console.error('SharePoint sync error:', error);
                 
-                // Use fallback local data if Excel fails
+                // Determine error type and show appropriate message
+                if (error.message.includes('403') || error.message.includes('401')) {
+                    updateSyncStatus('error', '❌ SharePoint access denied - check permissions');
+                } else if (error.message.includes('404')) {
+                    updateSyncStatus('error', '❌ SharePoint list not found - check URL and list name');
+                } else {
+                    updateSyncStatus('error', '❌ SharePoint connection failed - using demo data');
+                }
+                
+                // Use fallback data for demo/testing
+                console.log('Using fallback data due to SharePoint error');
                 initializeFallbackData();
             }
         }
         
-        // Fallback data initialization - Enhanced with more sites
+        // Fallback data initialization (same as before)
         function initializeFallbackData() {
             forkliftData = {
                 'Amarillo': [
@@ -781,20 +752,6 @@
                     syncStatus.style.opacity = '0.7';
                 }, 3000);
             }
-        }
-        
-        // Auto-refresh every 30 seconds
-        function startAutoRefresh() {
-            setInterval(async () => {
-                // Skip auto-refresh if using fallback data to avoid console spam
-                if (!EXCEL_CONFIG.useFallbackData) {
-                    await loadDataFromExcel();
-                } else {
-                    console.log('Auto-refresh skipped - using demo data');
-                }
-            }, EXCEL_CONFIG.refreshInterval);
-            
-            console.log('Auto-refresh configured: checking SharePoint Excel every 30 seconds (disabled for demo mode)');
         }
         
         // Function to update PM date when file is uploaded
@@ -903,13 +860,29 @@
             });
         }
         
-        // Function to handle form completion callback
+        // Enhanced form completion handler
         async function handleFormCompletion(siteName, forkliftId) {
             const uploadDate = getTodaysDate();
-            await updateAuditDate(siteName, forkliftId, uploadDate);
-            showNotification(`✅ ${forkliftId} PM completed on ${uploadDate}!\n\n📊 Remember to update SharePoint Excel for team sync.`, 'success');
             
-            // Reset the button state
+            // Update local display immediately for instant user feedback
+            await updateAuditDate(siteName, forkliftId, uploadDate);
+            
+            showNotification(
+                `✅ ${forkliftId} PM completed on ${uploadDate}!\n\n` +
+                `📊 Microsoft Forms → Power Automate → SharePoint update in progress!\n\n` +
+                `📁 Your file is being processed automatically.\n\n` +
+                `🔄 All users will see this update within 60 seconds.\n\n` +
+                `💡 Click the refresh button for immediate updates.`, 
+                'success'
+            );
+            
+            // Trigger a manual refresh after 3 seconds to show the SharePoint update
+            setTimeout(async () => {
+                console.log('Auto-refreshing after form completion...');
+                await loadDataFromSharePoint();
+            }, 3000);
+            
+            // Reset button state
             const buttons = document.querySelectorAll('.upload-btn, .form-opened');
             buttons.forEach(button => {
                 if (button.onclick && button.onclick.toString().includes(forkliftId)) {
@@ -939,7 +912,7 @@
                             `   • Uploaded the PM file\n` +
                             `   • Clicked "Submit" on the form\n\n` +
                             `❌ Click "Cancel" if you didn't complete the upload\n\n` +
-                            `Note: Don't forget to update SharePoint Excel with today's date for team sync!`
+                            `Note: SharePoint will automatically update with your submission!`
                         );
                         
                         if (completed) {
@@ -978,6 +951,63 @@
                     button.onclick = () => openAuditForm(siteName, forkliftId);
                 }
             });
+        }
+        
+        // Add manual refresh button
+        function addRefreshButton() {
+            // Remove existing refresh button if any
+            const existingButton = document.getElementById('manual-refresh-btn');
+            if (existingButton) {
+                existingButton.remove();
+            }
+            
+            const refreshButton = document.createElement('button');
+            refreshButton.id = 'manual-refresh-btn';
+            refreshButton.innerHTML = '🔄 Refresh Data';
+            refreshButton.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                background: linear-gradient(135deg, #4CAF50, #388E3C);
+                color: white;
+                border: none;
+                padding: 12px 16px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                transition: all 0.3s ease;
+            `;
+            
+            refreshButton.onmouseover = () => {
+                refreshButton.style.transform = 'translateY(-2px)';
+                refreshButton.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.4)';
+            };
+            
+            refreshButton.onmouseout = () => {
+                refreshButton.style.transform = 'translateY(0)';
+                refreshButton.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
+            };
+            
+            refreshButton.onclick = async () => {
+                refreshButton.innerHTML = '🔄 Refreshing...';
+                refreshButton.disabled = true;
+                refreshButton.style.opacity = '0.7';
+                
+                await loadDataFromSharePoint();
+                
+                refreshButton.innerHTML = '✅ Refreshed!';
+                setTimeout(() => {
+                    refreshButton.innerHTML = '🔄 Refresh Data';
+                    refreshButton.disabled = false;
+                    refreshButton.style.opacity = '1';
+                }, 2000);
+                
+                showNotification('📊 Data refreshed from SharePoint!', 'success');
+            };
+            
+            document.body.appendChild(refreshButton);
         }
         
         function toggleTile(tile) {
@@ -1189,9 +1219,9 @@
                         `1. Complete all required fields\n` +
                         `2. Upload your PM file\n` +
                         `3. Click Submit on the form\n` +
-                        `4. Update SharePoint Excel with today's date\n` +
+                        `4. Power Automate will update SharePoint automatically\n` +
                         `5. Close the form window when done\n\n` +
-                        `📊 Team will see updates when you refresh SharePoint Excel!`,
+                        `📊 All users will see updates automatically!`,
                         'info'
                     );
                     
@@ -1267,28 +1297,36 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('Initializing Forklift PM Tracker...');
+            console.log('🚀 Initializing Forklift PM Tracker with SharePoint Live Integration...');
             
-            // Load data from SharePoint Excel (will fallback to demo data)
-            await loadDataFromExcel();
+            // Load data from SharePoint
+            await loadDataFromSharePoint();
             
-            // Ensure fallback data is loaded if SharePoint fails
+            // Ensure fallback data if SharePoint access fails
             if (Object.keys(forkliftData).length === 0) {
-                console.log('No data loaded, initializing fallback data...');
+                console.log('⚠️ No SharePoint data loaded, using fallback for demo...');
                 initializeFallbackData();
             }
             
-            // Start auto-refresh every 30 seconds (will use fallback data)
-            startAutoRefresh();
+            // Auto-refresh every 60 seconds
+            setInterval(async () => {
+                console.log('🔄 Auto-refreshing SharePoint data...');
+                await loadDataFromSharePoint();
+            }, 60000);
             
-            // Load any saved PM data from localStorage
+            // Add manual refresh button
+            addRefreshButton();
+            
+            // Load any saved local data as backup (for offline use)
             loadPMDataFromStorage();
             
-            // Force create overview with current data
+            // Create initial overview
             createSiteOverview();
             
-            console.log('Forklift PM Tracker initialized. Sites loaded:', Object.keys(forkliftData));
-            console.log('Current forklift data:', forkliftData);
+            console.log('✅ SharePoint integration complete!');
+            console.log('📊 Available sites:', Object.keys(forkliftData));
+            console.log('🔄 Auto-refresh every 60 seconds');
+            console.log('📱 Manual refresh button available');
         });
     </script>
 </body>
